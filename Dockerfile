@@ -1,4 +1,4 @@
-FROM php:8.0-fpm
+FROM php:8.1-fpm
 #FROM --platform=linux/amd64 php:8.0-fpm
 
 # Install system dependencies
