@@ -28,8 +28,8 @@ RUN apt-get update && apt-get install -y \
     libwebp-dev \
     webp
 
-# Clear cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+# Get chromium and chromium driver
+RUN apt install -y chromium chromium-driver
 
 # Install PHP extensions
 RUN docker-php-ext-configure gd --enable-gd --with-freetype --with-jpeg --with-webp && docker-php-ext-install pdo_mysql mysqli mbstring exif pcntl bcmath gd zip soap intl
@@ -42,9 +42,6 @@ RUN pecl install redis && docker-php-ext-enable redis
 
 # Install imagick extension for php
 RUN pecl install imagick && docker-php-ext-enable imagick
-
-# Get chromium and chromium driver
-RUN apt install -y chromium chromium-driver
 
 # Clean installation
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
