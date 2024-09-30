@@ -1,3 +1,5 @@
+# Version 2.1.3
+
 FROM php:8.2-fpm
 
 # Install system dependencies
