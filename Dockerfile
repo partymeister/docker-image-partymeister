@@ -1,61 +1,68 @@
-# Version 2.1.3
+# ── Build PHP extensions ─────────────────────
+FROM php:8.4-fpm-bookworm AS builder
 
-FROM php:8.2-fpm
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+    libpng-dev libjpeg-dev libgd-dev libonig-dev libxml2-dev \
+    libzip-dev libmagickwand-dev libwebp-dev \
+    && docker-php-ext-configure gd --enable-gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install pdo_mysql mysqli mbstring exif pcntl bcmath gd zip soap intl \
+    && pecl install redis imagick \
+    && docker-php-ext-enable redis imagick
 
-RUN apt-get install -y curl
-RUN curl -fsSL https://deb.nodesource.com/setup_23.x -o nodesource_setup.sh
-RUN bash nodesource_setup.sh
+# ── Production ───────────────────────────────
+FROM php:8.4-fpm-bookworm AS production
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    libpng-dev \
-    libjpeg-dev \
-    libgd-dev \
-    libonig-dev \
-    libxml2-dev \
-    libzip-dev \
-    zip \
-    unzip \
-    cron \
-    imagemagick \
-    ffmpeg \
-    wget \
-    gnupg \
-    supervisor \
-    htop \
-    libmagickwand-dev \
-    jpegoptim \
-    optipng \
-    pngquant \
-    gifsicle \
-    libavif-bin \
-    libwebp-dev \
-    webp \
-    nodejs
+COPY --from=builder /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
+COPY --from=builder /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
 
-# Install PHP extensions
-RUN docker-php-ext-configure gd --enable-gd --with-freetype --with-jpeg --with-webp && docker-php-ext-install pdo_mysql mysqli mbstring exif pcntl bcmath gd zip soap intl
+# Node.js 22 LTS via nodesource
+RUN apt-get update && apt-get install -y --no-install-recommends curl gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get remove --purge -y gnupg \
+    && apt-get autoremove -y
 
-# Install redis extension for php
-RUN pecl install redis && docker-php-ext-enable redis
+# Runtime dependencies + Node
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+    git curl zip unzip cron imagemagick ffmpeg wget supervisor \
+    jpegoptim optipng pngquant gifsicle libavif-bin webp nodejs \
+    libpng16-16 libjpeg62-turbo libgd3 libonig5 libxml2 libzip4 \
+    libmagickwand-6.q16-6 libwebp7 ca-certificates \
+    && apt-get remove --purge -y \
+        linux-libc-dev \
+        libc6-dev \
+        gcc \
+        g++ \
+        cpp \
+        dpkg-dev \
+        make \
+    && apt-get autoremove -y \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install imagick extension for php
-RUN pecl install imagick && docker-php-ext-enable imagick
-
-# Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-RUN npm install -g pm2
+# PM2 + Playwright with Chromium
+RUN npm install -g pm2 playwright \
+    && npx playwright install-deps \
+    && npx playwright install chromium \
+    && rm -rf /root/.cache/node
 
-RUN npm install -g playwright
-RUN npx playwright install-deps
-RUN npx playwright install chromium
-
-# Clean installation
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
-
+WORKDIR /var/www
 COPY ./entrypoint.sh /var/www/entrypoint.sh
+RUN chmod +x /var/www/entrypoint.sh
+ENTRYPOINT ["/var/www/entrypoint.sh"]
 
-# Install depedencies, set .env file, clear all caches and start fpm
-ENTRYPOINT /var/www/entrypoint.sh
+# ── Dev ──────────────────────────────────────
+FROM production AS dev
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        gcc make autoconf linux-libc-dev libc6-dev \
+    && pecl install xdebug \
+    && docker-php-ext-enable xdebug \
+    && apt-get remove --purge -y gcc make autoconf linux-libc-dev libc6-dev \
+    && apt-get autoremove -y \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY ./xdebug.ini /usr/local/etc/php/conf.d/docker-php-ext-xdebug-config.ini
+
+COPY ./entrypoint.dev.sh /var/www/entrypoint.sh
+RUN chmod +x /var/www/entrypoint.sh

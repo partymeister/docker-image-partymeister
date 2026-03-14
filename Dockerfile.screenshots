@@ -1,0 +1,17 @@
+# =============================================================================
+# Base image for screenshot services — Node.js + system Chromium + pm2
+# =============================================================================
+# Use as: FROM dfox288/partymeister-screenshots-base:<version>
+# Then just COPY your server.js + package.json and npm ci.
+# =============================================================================
+FROM node:22-alpine
+
+RUN apk add --no-cache \
+    chromium nss freetype harfbuzz ttf-freefont ca-certificates
+
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
+RUN npm install -g pm2
+
+WORKDIR /app
