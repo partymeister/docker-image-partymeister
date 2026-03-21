@@ -1,5 +1,5 @@
 # =============================================================================
-# Base image for screenshot services — Node.js + system Chromium + pm2
+# Base image for screenshot services -- Node.js + system Chromium + pm2
 # =============================================================================
 # Use as: FROM dfox288/partymeister-screenshots-base:<version>
 # Then just COPY your server.js + package.json and npm ci.
