@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 [[ -f .env ]] && set -a && source .env && set +a
+# Pushes to ghcr.io/partymeister: run `docker login ghcr.io` first (a token with write:packages). CI uses GITHUB_TOKEN.
 
 BUILDER="my-builder"
 PLATFORMS="linux/amd64,linux/arm64"
@@ -11,15 +12,15 @@ TARGET="${3:-all}"
 
 case "$IMAGE" in
     php-84)
-        REPO="dfox288/partymeister-php-84"
+        REPO="ghcr.io/partymeister/partymeister-php-84"
         CONTEXT="php-84"
         ;;
     php-85)
-        REPO="dfox288/partymeister-php-85"
+        REPO="ghcr.io/partymeister/partymeister-php-85"
         CONTEXT="php-85"
         ;;
     screenshots)
-        REPO="dfox288/partymeister-screenshots-base"
+        REPO="ghcr.io/partymeister/partymeister-screenshots-base"
         CONTEXT="screenshots"
         ;;
     *)
