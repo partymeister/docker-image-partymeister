@@ -85,6 +85,13 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_PUSH_TOKEN }}
 
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Generate date tag
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         id: date
@@ -94,7 +101,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: dfox288/partymeister-php-84-${{ matrix.suffix }}
+          images: |
+            dfox288/partymeister-php-84-${{ matrix.suffix }}
+            ghcr.io/partymeister/partymeister-php-84-${{ matrix.suffix }}
           tags: |
             type=raw,value=latest
             type=semver,pattern={{version}}
@@ -119,7 +128,7 @@ jobs:
             docker buildx build \
               --platform "${{ matrix.platform }}" \
               --target "${{ matrix.target }}" \
-              --output "type=image,name=dfox288/partymeister-php-84-${{ matrix.suffix }},push-by-digest=true,name-canonical=true,push=true" \
+              --output "type=image,\"name=dfox288/partymeister-php-84-${{ matrix.suffix }},ghcr.io/partymeister/partymeister-php-84-${{ matrix.suffix }}\",push-by-digest=true,name-canonical=true,push=true" \
               --metadata-file "$RUNNER_TEMP/build-metadata.json" \
               --file php-84/Dockerfile \
               "${LABEL_ARGS[@]}" \
@@ -178,6 +187,13 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_PUSH_TOKEN }}
 
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -190,7 +206,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: dfox288/partymeister-php-84-${{ matrix.suffix }}
+          images: |
+            dfox288/partymeister-php-84-${{ matrix.suffix }}
+            ghcr.io/partymeister/partymeister-php-84-${{ matrix.suffix }}
           tags: |
             type=raw,value=latest
             type=semver,pattern={{version}}
@@ -201,8 +219,12 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf 'dfox288/partymeister-php-84-${{ matrix.suffix }}@sha256:%s ' *)
+          # one create per registry: the digests exist in both (pushed by digest to both names)
+          for reg in dfox288 ghcr.io/partymeister; do
+            docker buildx imagetools create \
+              $(jq -cr --arg p "${reg}/" '.tags | map(select(startswith($p)) | "-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+              $(printf "${reg}/partymeister-php-84-${{ matrix.suffix }}@sha256:%s " *)
+          done
 
   build-php-85:
     if: >-
@@ -257,6 +279,13 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_PUSH_TOKEN }}
 
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Generate date tag
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         id: date
@@ -266,7 +295,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: dfox288/partymeister-php-85-${{ matrix.suffix }}
+          images: |
+            dfox288/partymeister-php-85-${{ matrix.suffix }}
+            ghcr.io/partymeister/partymeister-php-85-${{ matrix.suffix }}
           tags: |
             type=raw,value=latest
             type=semver,pattern={{version}}
@@ -291,7 +322,7 @@ jobs:
             docker buildx build \
               --platform "${{ matrix.platform }}" \
               --target "${{ matrix.target }}" \
-              --output "type=image,name=dfox288/partymeister-php-85-${{ matrix.suffix }},push-by-digest=true,name-canonical=true,push=true" \
+              --output "type=image,\"name=dfox288/partymeister-php-85-${{ matrix.suffix }},ghcr.io/partymeister/partymeister-php-85-${{ matrix.suffix }}\",push-by-digest=true,name-canonical=true,push=true" \
               --metadata-file "$RUNNER_TEMP/build-metadata.json" \
               --file php-85/Dockerfile \
               "${LABEL_ARGS[@]}" \
@@ -350,6 +381,13 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_PUSH_TOKEN }}
 
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -362,7 +400,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: dfox288/partymeister-php-85-${{ matrix.suffix }}
+          images: |
+            dfox288/partymeister-php-85-${{ matrix.suffix }}
+            ghcr.io/partymeister/partymeister-php-85-${{ matrix.suffix }}
           tags: |
             type=raw,value=latest
             type=semver,pattern={{version}}
@@ -373,8 +413,12 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf 'dfox288/partymeister-php-85-${{ matrix.suffix }}@sha256:%s ' *)
+          # one create per registry: the digests exist in both (pushed by digest to both names)
+          for reg in dfox288 ghcr.io/partymeister; do
+            docker buildx imagetools create \
+              $(jq -cr --arg p "${reg}/" '.tags | map(select(startswith($p)) | "-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+              $(printf "${reg}/partymeister-php-85-${{ matrix.suffix }}@sha256:%s " *)
+          done
 
   build-screenshots:
     if: >-
@@ -415,6 +459,13 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_PUSH_TOKEN }}
 
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Generate date tag
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         id: date
@@ -424,7 +475,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: dfox288/partymeister-screenshots-base
+          images: |
+            dfox288/partymeister-screenshots-base
+            ghcr.io/partymeister/partymeister-screenshots-base
           tags: |
             type=raw,value=latest
             type=semver,pattern={{version}}
@@ -448,7 +501,7 @@ jobs:
 
             docker buildx build \
               --platform "${{ matrix.platform }}" \
-              --output "type=image,name=dfox288/partymeister-screenshots-base,push-by-digest=true,name-canonical=true,push=true" \
+              --output "type=image,\"name=dfox288/partymeister-screenshots-base,ghcr.io/partymeister/partymeister-screenshots-base\",push-by-digest=true,name-canonical=true,push=true" \
               --metadata-file "$RUNNER_TEMP/build-metadata.json" \
               --file screenshots/Dockerfile \
               "${LABEL_ARGS[@]}" \
@@ -502,6 +555,13 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_PUSH_TOKEN }}
 
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -514,7 +574,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: dfox288/partymeister-screenshots-base
+          images: |
+            dfox288/partymeister-screenshots-base
+            ghcr.io/partymeister/partymeister-screenshots-base
           tags: |
             type=raw,value=latest
             type=semver,pattern={{version}}
@@ -525,5 +587,9 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf 'dfox288/partymeister-screenshots-base@sha256:%s ' *)
+          # one create per registry: the digests exist in both (pushed by digest to both names)
+          for reg in dfox288 ghcr.io/partymeister; do
+            docker buildx imagetools create \
+              $(jq -cr --arg p "${reg}/" '.tags | map(select(startswith($p)) | "-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+              $(printf "${reg}/partymeister-screenshots-base@sha256:%s " *)
+          done
