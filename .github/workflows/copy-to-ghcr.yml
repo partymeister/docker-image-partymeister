@@ -1,0 +1,59 @@
+# Copy every non-date tag and the newest weekly date tag of the five public base images from Docker Hub (dfox288/*) to ghcr.io/partymeister/*, byte for
+# byte (dfox288/tum-cluster_k8s#78, batch 4). The consumers (partymeister-template Dockerfiles, compose) pin tags
+# such as :3 that only a git-tag build produces, so the first GHCR image of each tag has to be a copy.
+# Manual only. Docker Hub is read anonymously (the repos are public), GHCR is written with GITHUB_TOKEN.
+# Fails unless every GHCR digest equals its Docker Hub digest. Remove it with the Docker Hub push.
+#
+#   gh workflow run copy-to-ghcr.yml
+name: copy-to-ghcr
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write # push to ghcr.io with GITHUB_TOKEN
+
+concurrency:
+  group: copy-to-ghcr
+  cancel-in-progress: false
+
+jobs:
+  copy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install crane (pinned, checksum verified)
+        run: |
+          set -eu
+          ver=v0.22.1
+          curl -fsSLo "$RUNNER_TEMP/crane.tgz" "https://github.com/google/go-containerregistry/releases/download/${ver}/go-containerregistry_Linux_x86_64.tar.gz"
+          echo "0ab7a1d6932a213aed964ce97666c3077fe691c8606413674a8b3e0b9ec4cda0  $RUNNER_TEMP/crane.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/crane.tgz" -C "$RUNNER_TEMP" crane
+      - name: Copy every tag, then prove the digests are equal
+        run: |
+          set -eu
+          crane="$RUNNER_TEMP/crane"
+          copied=0
+          for name in partymeister-php-84-prod partymeister-php-84-dev partymeister-php-85-prod partymeister-php-85-dev partymeister-screenshots-base; do
+            src="docker.io/dfox288/${name}"; dst="ghcr.io/partymeister/${name}"
+            all="$("$crane" ls "$src")"
+            [ -n "$all" ] || { echo "FAIL: no tags listed for $src"; exit 1; }
+            # every semver and moving tag (3, 3.x, latest, ...) plus only the newest weekly date tag (YYYY.WW)
+            tags="$({ printf '%s\n' "$all" | grep -v -E '^[0-9]{4}\.[0-9]+$' || true; printf '%s\n' "$all" | grep -E '^[0-9]{4}\.[0-9]+$' | sort -V | tail -1; })"
+            for tag in $tags; do
+              want="$("$crane" digest "${src}:${tag}")"
+              "$crane" copy "${src}:${tag}" "${dst}:${tag}"
+              got="$("$crane" digest "${dst}:${tag}")"
+              [ -n "$want" ] && [ "$want" = "$got" ] || { echo "FAIL: ${name}:${tag} digests differ ($want vs $got)"; exit 1; }
+              echo "${name}:${tag} = ${want}" | tee -a "$GITHUB_STEP_SUMMARY"
+              copied=$((copied + 1))
+            done
+          done
+          echo "copied ${copied} tags"
